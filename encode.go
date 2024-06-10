@@ -17,6 +17,8 @@ const (
 	useCompactFloatsFlag
 	useInternedStringsFlag
 	omitEmptyFlag
+	encodeIncludeUnexportedFlag
+	encodeForceAsArrayFlag
 )
 
 type writer interface {
@@ -193,6 +195,23 @@ func (e *Encoder) UseInternedStrings(on bool) {
 		e.flags |= useInternedStringsFlag
 	} else {
 		e.flags &= ^useInternedStringsFlag
+	}
+}
+
+// IncludeUnexported causes the Encoder to encode unexported fields
+func (e *Encoder) IncludeUnexported(included bool) {
+	if included {
+		e.flags |= encodeIncludeUnexportedFlag
+	} else {
+		e.flags &= ^encodeIncludeUnexportedFlag
+	}
+}
+
+func (e *Encoder) SetForceAsArray(forced bool) {
+	if forced {
+		e.flags |= encodeForceAsArrayFlag
+	} else {
+		e.flags &= ^encodeForceAsArrayFlag
 	}
 }
 

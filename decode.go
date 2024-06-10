@@ -24,6 +24,8 @@ const (
 	disallowUnknownFieldsFlag
 	usePreallocateValues
 	disableAllocLimitFlag
+	decodeIncludeUnexportedFlag
+	decodeForceAsArrayFlag
 )
 
 type bufReader interface {
@@ -181,6 +183,23 @@ func (d *Decoder) DisableAllocLimit(on bool) {
 		d.flags |= disableAllocLimitFlag
 	} else {
 		d.flags &= ^disableAllocLimitFlag
+	}
+}
+
+// IncludeUnexported causes the Decoder to decode unexported fields
+func (d *Decoder) IncludeUnexported(included bool) {
+	if included {
+		d.flags |= decodeIncludeUnexportedFlag
+	} else {
+		d.flags &= ^decodeIncludeUnexportedFlag
+	}
+}
+
+func (d *Decoder) SetForceAsArray(forced bool) {
+	if forced {
+		d.flags |= decodeForceAsArrayFlag
+	} else {
+		d.flags &= ^decodeForceAsArrayFlag
 	}
 }
 
@@ -351,7 +370,7 @@ func (d *Decoder) decodeNilValue(v reflect.Value) error {
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-	v.Set(reflect.Zero(v.Type()))
+	d.reflectSet(v, reflect.Zero(v.Type()))
 	return err
 }
 
@@ -458,7 +477,17 @@ func (d *Decoder) DecodeInterface() (interface{}, error) {
 			return nil, err
 		}
 		return d.decodeMapDefault()
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
+	case msgpcode.FixExt1:
+		extID, err := d.PeekCode()
+		if err != nil {
+			return nil, err
+		}
+		if extID == taggedInterfaceExtID {
+			_, _ = d.readCode()
+			return d.decodeTaggedInterface()
+		}
+		return d.decodeInterfaceExt(c)
+	case msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
 		msgpcode.Ext8, msgpcode.Ext16, msgpcode.Ext32:
 		return d.decodeInterfaceExt(c)
 	}
@@ -516,7 +545,17 @@ func (d *Decoder) DecodeInterfaceLoose() (interface{}, error) {
 			return nil, err
 		}
 		return d.decodeMapDefault()
-	case msgpcode.FixExt1, msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
+	case msgpcode.FixExt1:
+		extID, err := d.PeekCode()
+		if err != nil {
+			return nil, err
+		}
+		if extID == taggedInterfaceExtID {
+			_, _ = d.readCode()
+			return d.decodeTaggedInterface()
+		}
+		return d.decodeInterfaceExt(c)
+	case msgpcode.FixExt2, msgpcode.FixExt4, msgpcode.FixExt8, msgpcode.FixExt16,
 		msgpcode.Ext8, msgpcode.Ext16, msgpcode.Ext32:
 		return d.decodeInterfaceExt(c)
 	}

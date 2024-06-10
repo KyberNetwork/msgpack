@@ -28,7 +28,12 @@ func encodeByteArrayValue(e *Encoder, v reflect.Value) error {
 	}
 
 	e.buf = grow(e.buf, v.Len())
-	reflect.Copy(reflect.ValueOf(e.buf), v)
+	// v.CanSet() means v is exported
+	if e.flags&encodeIncludeUnexportedFlag == 0 || v.CanSet() {
+		reflect.Copy(reflect.ValueOf(e.buf), v)
+	} else {
+		e.writeByteArrayUnexportedToBuf(v)
+	}
 	return e.write(e.buf)
 }
 
@@ -99,7 +104,7 @@ func (e *Encoder) EncodeArrayLen(l int) error {
 }
 
 func encodeStringSliceValue(e *Encoder, v reflect.Value) error {
-	ss := v.Convert(stringSliceType).Interface().([]string)
+	ss := e.reflectStringSlice(v.Convert(stringSliceType))
 	return e.encodeStringSlice(ss)
 }
 
